@@ -7,6 +7,9 @@ const userController = require("../controllers/user.controller");
 // Importing the authentication middleware
 const auth = require("../middlewares/auth");
 
+// Importing the multer middleware
+const files = require("../middlewares/multer");
+
 // Creating a router
 const userRouter = express.Router();
 
@@ -32,7 +35,12 @@ userRouter.put("/reset", userController.resetPassword);
 userRouter.get("/profile", auth.authenticate, userController.getProfile);
 
 // Route for updating user profile
-userRouter.put("/update/:id", auth.authenticate, userController.updateProfile);
+userRouter.put(
+  "/update/:id",
+  auth.authenticate,
+  files.single("image"),
+  userController.updateProfile
+);
 
 // Route for deleting user
 userRouter.delete(

@@ -446,6 +446,7 @@ const userController = {
         email: email || user.email,
         mobile: mobile || user.mobile,
         balance: balance || user.balance,
+        image: req.file ? req.file.path : user.image,
       });
 
       await user.save();
