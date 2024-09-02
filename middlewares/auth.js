@@ -42,7 +42,7 @@ const auth = {
   authorize: async (request, response, next) => {
     try {
       const userId = request.userId;
-      const user = await User.findById(userId);
+      const user = await User.findByPk(userId);
       // If user is not found
       if (!user) {
         return response.status(404).send({ message: "User not found" });

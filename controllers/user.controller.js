@@ -158,6 +158,7 @@ const userController = {
     } catch (error) {
       await t.rollback();
       // Sending an error response
+      console.log(error);
       res.status(500).json({ message: error.message });
     }
   },
