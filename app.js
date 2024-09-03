@@ -11,6 +11,7 @@ const expenseConfigRouter = require("./routes/expenseConfig.route");
 const budgetRouter = require("./routes/budget.route");
 const incomeRouter = require("./routes/income.route");
 const expenseRouter = require("./routes/expense.route");
+const adminRouter = require("./routes/admin.route");
 
 const app = express();
 
@@ -28,5 +29,6 @@ app.use("/api/v1/expense-config", expenseConfigRouter);
 app.use("/api/v1/budgets", budgetRouter);
 app.use("/api/v1/incomes", incomeRouter);
 app.use("/api/v1/expenses", expenseRouter);
+app.use("/api/v1/admin", adminRouter);
 
 module.exports = app;
