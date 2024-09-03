@@ -5,6 +5,8 @@ const sequelize = new Sequelize(
   `postgresql://${DB_USER}:${DB_PASSWORD}@aws-0-ap-south-1.pooler.supabase.com:${DB_PORT}/postgres`
 );
 
-sequelize.sync();
+sequelize.sync({
+  alter: true,
+});
 
 module.exports = sequelize;

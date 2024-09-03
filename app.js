@@ -10,6 +10,7 @@ const incomeConfigRouter = require("./routes/incomeConfig.route");
 const expenseConfigRouter = require("./routes/expenseConfig.route");
 const budgetRouter = require("./routes/budget.route");
 const incomeRouter = require("./routes/income.route");
+const expenseRouter = require("./routes/expense.route");
 
 const app = express();
 
@@ -26,5 +27,6 @@ app.use("/api/v1/income-config", incomeConfigRouter);
 app.use("/api/v1/expense-config", expenseConfigRouter);
 app.use("/api/v1/budgets", budgetRouter);
 app.use("/api/v1/incomes", incomeRouter);
+app.use("/api/v1/expenses", expenseRouter);
 
 module.exports = app;
