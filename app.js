@@ -15,6 +15,8 @@ const adminRouter = require("./routes/admin.route");
 
 const app = express();
 
+require("./jobs/NotificationJob");
+
 app.use(cookieParser());
 
 app.use(express.json());

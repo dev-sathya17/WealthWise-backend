@@ -37,10 +37,6 @@ const User = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
-    balance: {
-      type: DataTypes.DOUBLE,
-      allowNull: false,
-    },
     image: {
       type: DataTypes.STRING,
       allowNull: false,

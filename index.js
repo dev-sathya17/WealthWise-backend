@@ -5,7 +5,7 @@ const sequelize = require("./utils/db.config");
 sequelize
   .authenticate()
   .then(() => {
-    console.log(`Database connected} at ${DB_PORT}.`);
+    console.log(`Database connected at ${DB_PORT}.`);
     app.listen(SERVER_PORT, () => {
       console.log(`Server is running on port ${SERVER_PORT}`);
     });

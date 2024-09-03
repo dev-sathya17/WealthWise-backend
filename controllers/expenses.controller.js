@@ -1,6 +1,7 @@
 const Expense = require("../models/expense.model");
 const ExpenseCategory = require("../models/expenseCategory");
 const ExpenseConfig = require("../models/expenseConfig");
+const Budget = require("../models/budget");
 const sequelize = require("../utils/db.config");
 
 const expensesController = {
@@ -17,6 +18,37 @@ const expensesController = {
       });
 
       const expenseConfigId = expenseConfig.dataValues.expenseConfigId;
+
+      const budget = await Budget.findOne({
+        where: { expenseConfigId },
+      });
+
+      if (!budget) {
+        return res.status(404).send({ message: "Budget not found" });
+      }
+
+      if (budget.amount < amount) {
+        return res.status(400).send({ message: "Insufficient balance" });
+      }
+
+      let total = 0;
+      try {
+        total = await Expense.sum("amount", {
+          where: {
+            expenseConfigId: expenseConfigId,
+          },
+        });
+
+        if (!total) {
+          total = 0;
+        }
+      } catch (error) {
+        console.error("Error calculating total expenses:", error);
+      }
+
+      if (total + parseFloat(amount) > parseFloat(budget.amount)) {
+        return res.status(400).send({ message: "Insufficient balance" });
+      }
 
       const expense = await Expense.create({
         amount,
