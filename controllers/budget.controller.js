@@ -49,7 +49,12 @@ const budgetController = {
         ],
         attributes: ["budgetId", "amount"],
       });
-      res.json({ budgetItems });
+
+      const userBudgetItems = budgetItems.filter(
+        (budgetItem) => budgetItem.ExpenseConfig.userId === req.userId
+      );
+
+      res.json({ userBudgetItems });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
