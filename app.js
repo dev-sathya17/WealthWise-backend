@@ -4,6 +4,7 @@ const cookieParser = require("cookie-parser");
 const userRouter = require("./routes/user.route");
 const incomeCategoriesRouter = require("./routes/incomeCategories.route");
 const expenseCategoriesRouter = require("./routes/expenseCategories.route");
+const incomeConfigRouter = require("./routes/incomeConfig.route");
 
 const app = express();
 
@@ -16,5 +17,6 @@ app.use(morgan("dev"));
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/income-categories", incomeCategoriesRouter);
 app.use("/api/v1/expense-categories", expenseCategoriesRouter);
+app.use("/api/v1/income-config", incomeConfigRouter);
 
 module.exports = app;
