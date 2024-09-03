@@ -1,6 +1,7 @@
 const Income = require("../models/income.model");
 const IncomeCategory = require("../models/incomeCategory");
 const IncomeConfig = require("../models/incomeConfig");
+const sequelize = require("../utils/db.config");
 
 const incomesController = {
   // API to add an income
@@ -95,6 +96,44 @@ const incomesController = {
       res.json({ message: "Income deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: error.message });
+    }
+  },
+
+  // API to find total income per month
+  totalIncomePerMonth: async (req, res) => {
+    try {
+      const totalsPerMonth = await Income.findAll({
+        attributes: [
+          [
+            sequelize.fn("TO_CHAR", sequelize.col("creditDate"), "YYYY-MM"),
+            "month",
+          ],
+          [sequelize.fn("SUM", sequelize.col("amount")), "totalAmount"],
+        ],
+        where: {
+          "$IncomeConfig.userId$": req.userId,
+        },
+        include: [
+          {
+            model: IncomeConfig,
+            attributes: [],
+          },
+        ],
+        group: [
+          sequelize.fn("TO_CHAR", sequelize.col("creditDate"), "YYYY-MM"),
+        ],
+        order: [
+          [
+            sequelize.fn("TO_CHAR", sequelize.col("creditDate"), "YYYY-MM"),
+            "ASC",
+          ],
+        ],
+      });
+
+      res.status(200).json(totalsPerMonth);
+    } catch (error) {
+      console.error("Error calculating totals per month:", error);
+      res.status(500).json({ message: "Internal server error" });
     }
   },
 };

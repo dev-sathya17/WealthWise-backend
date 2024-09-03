@@ -49,5 +49,11 @@ userRouter.delete(
   userController.deleteProfile
 );
 
+userRouter.get(
+  "/total",
+  auth.authenticate,
+  userController.totalUserIncomeExpense
+);
+
 // Exporting the router
 module.exports = userRouter;

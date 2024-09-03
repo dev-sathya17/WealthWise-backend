@@ -1,6 +1,7 @@
 const Expense = require("../models/expense.model");
 const ExpenseCategory = require("../models/expenseCategory");
 const ExpenseConfig = require("../models/expenseConfig");
+const sequelize = require("../utils/db.config");
 
 const expensesController = {
   // API to add an expense
@@ -95,6 +96,42 @@ const expensesController = {
       res.json({ message: "Expense deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: error.message });
+    }
+  },
+
+  // API to find total expense per month
+  totalExpensePerMonth: async (req, res) => {
+    try {
+      const totalsPerMonth = await Expense.findAll({
+        attributes: [
+          [
+            sequelize.fn("TO_CHAR", sequelize.col("debitDate"), "YYYY-MM"),
+            "month",
+          ],
+          [sequelize.fn("SUM", sequelize.col("amount")), "totalAmount"],
+        ],
+        where: {
+          "$ExpenseConfig.userId$": req.userId,
+        },
+        include: [
+          {
+            model: ExpenseConfig,
+            attributes: [],
+          },
+        ],
+        group: [sequelize.fn("TO_CHAR", sequelize.col("debitDate"), "YYYY-MM")],
+        order: [
+          [
+            sequelize.fn("TO_CHAR", sequelize.col("debitDate"), "YYYY-MM"),
+            "ASC",
+          ],
+        ],
+      });
+
+      res.status(200).json(totalsPerMonth);
+    } catch (error) {
+      console.error("Error calculating totals per month:", error);
+      res.status(500).json({ message: "Internal server error" });
     }
   },
 };

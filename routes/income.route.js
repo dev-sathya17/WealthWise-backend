@@ -9,6 +9,12 @@ incomeRouter.post("/", auth.authenticate, incomesController.addIncome);
 
 incomeRouter.get("/", auth.authenticate, incomesController.getAllIncomes);
 
+incomeRouter.get(
+  "/count",
+  auth.authenticate,
+  incomesController.totalIncomePerMonth
+);
+
 incomeRouter.put("/:id", auth.authenticate, incomesController.updateIncomes);
 
 incomeRouter.delete("/:id", auth.authenticate, incomesController.deleteIncome);

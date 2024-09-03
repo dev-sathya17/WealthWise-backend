@@ -1,8 +1,12 @@
 // Importing bcrypt library for encrypting passwords
 const bcrypt = require("bcrypt");
 
-// Importing the User model
+// Importing the models
 const User = require("../models/user");
+const Income = require("../models/income.model");
+const Expense = require("../models/expense.model");
+const IncomeConfig = require("../models/incomeConfig");
+const ExpenseConfig = require("../models/expenseConfig");
 
 // Importing helper function to send email
 const sendEmail = require("../helpers/emailHelper");
@@ -487,6 +491,60 @@ const userController = {
       res.status(200).send({ message: "Profile deleted successfully" });
     } catch (error) {
       res.status(500).send({ message: error.message });
+    }
+  },
+
+  // API to find total income and expenses
+  totalUserIncomeExpense: async (req, res) => {
+    try {
+      const userId = req.userId; // Get userId from the request, assuming you have some middleware setting it
+
+      // Fetch total income
+      const totalIncomeResult = await Income.findOne({
+        attributes: [
+          [sequelize.fn("SUM", sequelize.col("amount")), "totalIncome"],
+        ],
+        where: {
+          "$IncomeConfig.userId$": req.userId,
+        },
+        include: [
+          {
+            model: IncomeConfig,
+            attributes: [],
+          },
+        ],
+        raw: true,
+      });
+
+      // Fetch total expense
+      const totalExpenseResult = await Expense.findOne({
+        attributes: [
+          [sequelize.fn("SUM", sequelize.col("amount")), "totalExpense"],
+        ],
+        where: {
+          "$ExpenseConfig.userId$": req.userId,
+        },
+        include: [
+          {
+            model: ExpenseConfig,
+            attributes: [],
+          },
+        ],
+        raw: true,
+      });
+
+      // Extract the totals
+      const totalIncome = totalIncomeResult.totalIncome || 0;
+      const totalExpense = totalExpenseResult.totalExpense || 0;
+
+      // Send response
+      res.status(200).json({
+        totalIncome,
+        totalExpense,
+      });
+    } catch (error) {
+      console.error("Error fetching totals:", error);
+      res.status(500).json({ message: "Internal Server Error" });
     }
   },
 };
