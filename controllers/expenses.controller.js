@@ -79,6 +79,12 @@ const expensesController = {
         ],
       });
 
+      await budget.update({
+        amount: parseInt(budget.amount) - parseInt(amount),
+      });
+
+      budget.save();
+
       if (!createdExpense) {
         return res.status(400).json({ message: "Expense not found" });
       }
