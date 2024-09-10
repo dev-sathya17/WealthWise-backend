@@ -1,5 +1,6 @@
 const IncomeCategory = require("../models/incomeCategory");
 const IncomeConfig = require("../models/incomeConfig");
+const User = require("../models/user");
 const sequelize = require("../utils/db.config");
 
 const incomeConfigController = {
@@ -28,7 +29,7 @@ const incomeConfigController = {
     const transaction = await sequelize.transaction();
     try {
       // Create new income configuration object
-      const { categories } = req.body;
+      const { categories, isInitial } = req.body;
 
       if (!Array.isArray(categories) || categories.length === 0) {
         throw new Error("Categories array cannot be empty");
@@ -46,6 +47,15 @@ const incomeConfigController = {
           );
         })
       );
+
+      if (isInitial) {
+        const user = await User.findByPk(req.userId);
+        await user.update({
+          isFirstLogin: false,
+        });
+        user.save();
+      }
+
       await transaction.commit();
       res.status(201).json({
         message: "Income configuration added successfully",
@@ -62,7 +72,7 @@ const incomeConfigController = {
       const { id } = req.params;
       // Delete income configuration from the database
       await IncomeConfig.destroy({
-        where: { userId: req.userId, incomeCategoryId: id },
+        where: { incomeConfigId: id },
       });
       res.status(200).json({
         message: "Income configuration deleted successfully",

@@ -5,6 +5,7 @@ const IncomeConfig = require("../models/incomeConfig");
 const Expense = require("../models/expense.model");
 const ExpenseCategory = require("../models/expenseCategory");
 const ExpenseConfig = require("../models/expenseConfig");
+const sequelize = require("../utils/db.config");
 
 const adminController = {
   getUsers: async (req, res) => {
@@ -47,8 +48,6 @@ const adminController = {
                 model: IncomeCategory,
                 attributes: ["name", "incomeCategoryId"],
               },
-            ],
-            include: [
               {
                 model: User,
                 attributes: ["name"],
@@ -64,6 +63,7 @@ const adminController = {
           "incomeId",
         ],
       });
+
       const expenses = await Expense.findAll({
         include: [
           {
@@ -74,8 +74,6 @@ const adminController = {
                 model: ExpenseCategory,
                 attributes: ["name", "expenseCategoryId"],
               },
-            ],
-            include: [
               {
                 model: User,
                 attributes: ["name"],
@@ -92,9 +90,37 @@ const adminController = {
         ],
       });
 
+      const totalExpense = await Expense.findOne({
+        attributes: [
+          [sequelize.fn("SUM", sequelize.col("amount")), "totalAmount"],
+        ],
+        include: [
+          {
+            model: ExpenseConfig,
+            attributes: [],
+          },
+        ],
+        raw: true,
+      });
+
+      const totalIncome = await Income.findOne({
+        attributes: [
+          [sequelize.fn("SUM", sequelize.col("amount")), "totalAmount"],
+        ],
+        include: [
+          {
+            model: IncomeConfig,
+            attributes: [],
+          },
+        ],
+        raw: true,
+      });
+
       res.status(200).json({
         incomes,
         expenses,
+        totalExpense: totalExpense.totalAmount,
+        totalIncome: totalIncome.totalAmount,
       });
     } catch (error) {
       console.log(error);

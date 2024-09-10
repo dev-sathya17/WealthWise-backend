@@ -18,7 +18,6 @@ incomeCategoriesRouter.post(
 incomeCategoriesRouter.get(
   "/",
   auth.authenticate,
-  auth.authorize,
   incomeCategoriesController.getAllCategories
 );
 

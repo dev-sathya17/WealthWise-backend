@@ -8,7 +8,8 @@ const expensesController = {
   // API to add an expense
   addExpense: async (req, res) => {
     try {
-      const { amount, categoryId, description } = req.body;
+      const { amount, categoryId, description, debitDate, isRecurring } =
+        req.body;
 
       const expenseConfig = await ExpenseConfig.findOne({
         where: {
@@ -27,8 +28,10 @@ const expensesController = {
         return res.status(404).send({ message: "Budget not found" });
       }
 
-      if (budget.amount < amount) {
-        return res.status(400).send({ message: "Insufficient balance" });
+      if (parseInt(budget.amount) < parseInt(amount)) {
+        return res
+          .status(400)
+          .send({ message: "Given expense crosses allotted budget" });
       }
 
       let total = 0;
@@ -54,8 +57,35 @@ const expensesController = {
         amount,
         expenseConfigId,
         description,
+        debitDate,
+        isRecurring,
       });
-      res.status(201).json({ message: "Expense added successfully", expense });
+
+      const createdExpense = await Expense.findOne({
+        where: {
+          expenseId: expense.expenseId,
+        },
+        include: [
+          {
+            model: ExpenseConfig,
+            attributes: ["expenseConfigId"],
+            include: [
+              {
+                model: ExpenseCategory,
+                attributes: ["name", "expenseCategoryId"],
+              },
+            ],
+          },
+        ],
+      });
+
+      if (!createdExpense) {
+        return res.status(400).json({ message: "Expense not found" });
+      }
+      res.status(201).json({
+        message: "Expense added successfully",
+        expense: createdExpense,
+      });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
@@ -137,8 +167,8 @@ const expensesController = {
       const totalsPerMonth = await Expense.findAll({
         attributes: [
           [
-            sequelize.fn("TO_CHAR", sequelize.col("debitDate"), "YYYY-MM"),
-            "month",
+            sequelize.fn("TO_CHAR", sequelize.col("debitDate"), "YYYY-MM-DD"),
+            "date",
           ],
           [sequelize.fn("SUM", sequelize.col("amount")), "totalAmount"],
         ],
@@ -151,16 +181,26 @@ const expensesController = {
             attributes: [],
           },
         ],
-        group: [sequelize.fn("TO_CHAR", sequelize.col("debitDate"), "YYYY-MM")],
+        group: [
+          sequelize.fn("TO_CHAR", sequelize.col("debitDate"), "YYYY-MM-DD"),
+        ],
         order: [
           [
-            sequelize.fn("TO_CHAR", sequelize.col("debitDate"), "YYYY-MM"),
+            sequelize.fn("TO_CHAR", sequelize.col("debitDate"), "YYYY-MM-DD"),
             "ASC",
           ],
         ],
       });
 
-      res.status(200).json(totalsPerMonth);
+      const expenseData = [];
+      totalsPerMonth.forEach(({ dataValues }) => {
+        expenseData.push({
+          date: dataValues.date,
+          value: dataValues.totalAmount,
+        });
+      });
+
+      res.status(200).json(expenseData);
     } catch (error) {
       console.error("Error calculating totals per month:", error);
       res.status(500).json({ message: "Internal server error" });

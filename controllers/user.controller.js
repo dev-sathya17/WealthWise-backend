@@ -17,6 +17,8 @@ const jwt = require("jsonwebtoken");
 const { SECRET_KEY } = require("../utils/config");
 const generateOtp = require("../helpers/userHelper");
 const sequelize = require("../utils/db.config");
+const IncomeCategory = require("../models/incomeCategory");
+const ExpenseCategory = require("../models/expenseCategory");
 
 const userController = {
   // API for registering users
@@ -25,7 +27,7 @@ const userController = {
 
     try {
       // Destructuring the request body
-      const { name, email, password, mobile, role, balance } = req.body;
+      const { name, email, password, mobile, role } = req.body;
 
       // Checking if user already exists
       const existingUser = await User.findOne({ where: { email } });
@@ -53,7 +55,6 @@ const userController = {
           mobile,
           image: req.file ? req.file.path : "uploads/avatar.png",
           role: role || "user",
-          balance,
         },
         { transaction: t }
       );
@@ -358,7 +359,7 @@ const userController = {
         return res.status(404).send({ message: "user not found" });
       }
 
-      if (user.otp === otp) {
+      if (user.otp === parseInt(otp)) {
         user.otp = 0;
         await user.save();
         res.status(200).send({ message: "OTP verified successfully" });
@@ -415,7 +416,6 @@ const userController = {
             "createdAt",
             "updatedAt",
             "otp",
-            "role",
             "isFirstLogin",
           ],
         },
@@ -437,26 +437,29 @@ const userController = {
   // API to update user profile information
   updateProfile: async (req, res) => {
     try {
-      const userId = req.userId;
-      if (!userId) {
+      const { id } = req.params;
+      if (!id) {
         return res.status(400).send({ message: "User not authenticated" });
       }
-      const { name, email, mobile, balance } = req.body;
-      const user = await User.findByPk(userId);
+      const { name, email, mobile } = req.body;
+
+      const user = await User.findByPk(id);
+
       if (!user) {
         return res.status(404).send({ message: "User not found" });
       }
+
       await user.update({
         name: name || user.name,
         email: email || user.email,
         mobile: mobile || user.mobile,
-        balance: balance || user.balance,
         image: req.file ? req.file.path : user.image,
       });
 
       await user.save();
       res.status(200).json({ message: "Profile updated successfully", user });
     } catch (error) {
+      console.log(error);
       res.status(500).send({ message: error.message });
     }
   },
@@ -464,29 +467,31 @@ const userController = {
   // API to delete user
   deleteProfile: async (req, res) => {
     try {
-      const userId = req.userId;
-      if (!userId) {
+      const { id } = req.params;
+      if (!id) {
         return res.status(400).send({ message: "User not authenticated" });
       }
-      const user = await User.findByPk(userId);
+      const user = await User.findByPk(id);
       if (!user) {
         return res.status(404).send({ message: "Customer not found" });
       }
       await user.destroy();
 
-      // clearing the cookie
-      res.clearCookie("token", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        path: "/",
-      });
-      res.clearCookie("role", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        path: "/",
-      });
+      if (id === req.userId) {
+        // clearing the cookie
+        res.clearCookie("token", {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+          path: "/",
+        });
+        res.clearCookie("role", {
+          httpOnly: true,
+          secure: true,
+          sameSite: "none",
+          path: "/",
+        });
+      }
 
       res.status(200).send({ message: "Profile deleted successfully" });
     } catch (error) {
@@ -497,8 +502,6 @@ const userController = {
   // API to find total income and expenses
   totalUserIncomeExpense: async (req, res) => {
     try {
-      const userId = req.userId; // Get userId from the request, assuming you have some middleware setting it
-
       // Fetch total income
       const totalIncomeResult = await Income.findOne({
         attributes: [
@@ -545,6 +548,218 @@ const userController = {
     } catch (error) {
       console.error("Error fetching totals:", error);
       res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
+  // API to find total income and expenses per category
+  totalUserIncomeExpenseByCategory: async (req, res) => {
+    try {
+      // Fetch total income
+      const totalIncomeByCategory = await Income.findAll({
+        include: [
+          {
+            model: IncomeConfig,
+            attributes: [],
+            include: [
+              {
+                model: IncomeCategory,
+                attributes: ["incomeCategoryId", "name"],
+              },
+            ],
+          },
+        ],
+        attributes: [
+          [sequelize.fn("SUM", sequelize.col("amount")), "totalAmount"],
+          [sequelize.col("IncomeConfig->IncomeCategory.name"), "categoryName"],
+        ],
+        where: {
+          "$IncomeConfig.userId$": req.userId,
+        },
+        group: [
+          "IncomeConfig.IncomeCategory.incomeCategoryId",
+          "IncomeConfig.IncomeCategory.name",
+        ],
+        raw: true,
+      });
+
+      // Fetch total expense
+      const totalExpenseByCategory = await Expense.findAll({
+        include: [
+          {
+            model: ExpenseConfig,
+            attributes: [],
+            include: [
+              {
+                model: ExpenseCategory,
+                attributes: ["expenseCategoryId", "name"],
+              },
+            ],
+          },
+        ],
+        attributes: [
+          [sequelize.fn("SUM", sequelize.col("amount")), "totalAmount"],
+          [
+            sequelize.col("ExpenseConfig->ExpenseCategory.name"),
+            "categoryName",
+          ],
+        ],
+        where: {
+          "$ExpenseConfig.userId$": req.userId,
+        },
+        group: [
+          "ExpenseConfig.ExpenseCategory.expenseCategoryId",
+          "ExpenseConfig.ExpenseCategory.name",
+        ],
+        raw: true,
+      });
+
+      // Cleansing the data
+      const incomeData = totalIncomeByCategory.map((income) => {
+        return {
+          name: income.categoryName,
+          value: parseInt(income.totalAmount),
+        };
+      });
+
+      const expenseData = totalExpenseByCategory.map((expense) => {
+        return {
+          name: expense.categoryName,
+          value: parseInt(expense.totalAmount),
+        };
+      });
+
+      // Send response
+      res.status(200).json({
+        incomeData,
+        expenseData,
+      });
+    } catch (error) {
+      console.error("Error fetching totals:", error);
+      res.status(500).json({ message: "Internal Server Error" });
+    }
+  },
+
+  // API to check authentication
+  checkAuthentication: async (req, res) => {
+    try {
+      const token = req.cookies.token;
+      const role = req.cookies.role;
+
+      // If token does not exist
+      if (!token) {
+        return res.status(401).json({ message: "Access Denied" });
+      }
+
+      // Verifying the token using JWT
+      try {
+        const verified = jwt.verify(token, SECRET_KEY);
+        res.status(200).json({ message: "Authentication successful", role });
+      } catch (error) {
+        // Sending an error response
+        return res.status(401).json({ message: "Invalid token" });
+      }
+    } catch (error) {
+      // Sending an error response
+      res.status(500).json({ message: error.message });
+    }
+  },
+
+  // API to fetch user budget settings.
+  getSettings: async (req, res) => {
+    try {
+      const incomeConfig = await IncomeConfig.findAll({
+        include: [
+          {
+            model: IncomeCategory,
+            attributes: ["incomeCategoryId", "name"],
+          },
+        ],
+        attributes: ["incomeConfigId"],
+        where: {
+          userId: req.userId,
+        },
+      });
+
+      const configCategories = incomeConfig.map((config) => {
+        return {
+          ...config.IncomeCategory.dataValues,
+          incomeConfigId: config.dataValues.incomeConfigId,
+        };
+      });
+
+      const incomeCategories = await IncomeCategory.findAll();
+
+      const incomeSettings = [];
+      incomeCategories.forEach((incomeCategory) => {
+        const settingsObj = {};
+        const income = configCategories.find(
+          (inc) => inc.incomeCategoryId === incomeCategory.incomeCategoryId
+        );
+        if (income) {
+          settingsObj.name = income.name;
+          settingsObj.categoryId = income.incomeCategoryId;
+          settingsObj.isActive = true;
+          settingsObj.incomeConfigId = income.incomeConfigId;
+        } else {
+          settingsObj.name = incomeCategory.name;
+          settingsObj.categoryId = incomeCategory.incomeCategoryId;
+          settingsObj.isActive = false;
+          settingsObj.incomeConfigId = null;
+        }
+        incomeSettings.push(settingsObj);
+      });
+
+      const expenseConfig = await ExpenseConfig.findAll({
+        include: [
+          {
+            model: ExpenseCategory,
+            attributes: ["expenseCategoryId", "name"],
+          },
+        ],
+        attributes: ["expenseConfigId"],
+        where: {
+          userId: req.userId,
+        },
+      });
+
+      const expenseConfigCategories = expenseConfig.map((expense) => {
+        return {
+          ...expense.ExpenseCategory.dataValues,
+          expenseConfigId: expense.dataValues.expenseConfigId,
+        };
+      });
+
+      const expenseCategories = await ExpenseCategory.findAll();
+
+      const expenseSettings = [];
+      expenseCategories.forEach((expenseCategory) => {
+        const settingsObj = {};
+        const expense = expenseConfigCategories.find(
+          (exp) => exp.expenseCategoryId === expenseCategory.expenseCategoryId
+        );
+        if (expense) {
+          settingsObj.name = expense.name;
+          settingsObj.categoryId = expense.expenseCategoryId;
+          settingsObj.isActive = true;
+          settingsObj.expenseConfigId = expense.expenseConfigId;
+        } else {
+          settingsObj.name = expenseCategory.name;
+          settingsObj.categoryId = expenseCategory.expenseCategoryId;
+          settingsObj.isActive = false;
+          settingsObj.expenseConfigId = null;
+        }
+        expenseSettings.push(settingsObj);
+      });
+
+      return res
+        .status(200)
+        .json({ income: incomeSettings, expense: expenseSettings });
+    } catch (error) {
+      console.error("Error fetching user budget settings:", error);
+      res
+        .status(500)
+        .json({ message: "Internal Server Error", error: error.message });
+      throw new Error("Internal Server Error");
     }
   },
 };

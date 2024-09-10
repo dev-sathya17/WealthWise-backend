@@ -1,3 +1,4 @@
+const Budget = require("../models/budget");
 const ExpenseCategory = require("../models/expenseCategory");
 const ExpenseConfig = require("../models/expenseConfig");
 const sequelize = require("../utils/db.config");
@@ -28,14 +29,14 @@ const expenseConfigController = {
     const transaction = await sequelize.transaction();
     try {
       // Create new expense configuration object
-      const { categories } = req.body;
+      const { categories, amount } = req.body;
 
       if (!Array.isArray(categories) || categories.length === 0) {
         throw new Error("Categories array cannot be empty");
       }
 
       // Save the new expense configuration to the database
-      await Promise.all(
+      const configs = await Promise.all(
         categories.map((category) => {
           return ExpenseConfig.create(
             {
@@ -46,6 +47,16 @@ const expenseConfigController = {
           );
         })
       );
+
+      configs.forEach(async (config) => {
+        const values = config.dataValues;
+        const budget = await Budget.create({
+          expenseConfigId: values.expenseConfigId,
+          amount,
+        });
+        budget.save();
+      });
+
       await transaction.commit();
       res.status(201).json({
         message: "Expense configuration added successfully",
@@ -61,14 +72,58 @@ const expenseConfigController = {
     try {
       const { id } = req.params;
       // Delete Expense configuration from the database
-      await ExpenseConfig.destroy({
-        where: { userId: req.userId, expenseCategoryId: id },
+      const config = await ExpenseConfig.destroy({
+        where: { expenseConfigId: id },
       });
+      console.log(config);
       res.status(200).json({
         message: "Expense configuration deleted successfully",
       });
     } catch (error) {
       res.status(500).json({ message: error.message });
+    }
+  },
+
+  // API to initialize expense Config with budgets
+  initialExpenseConfig: async (req, res) => {
+    const transaction = await sequelize.transaction();
+    try {
+      // Create new expense configuration object
+      const { categories, amounts } = req.body;
+
+      if (!Array.isArray(categories) || categories.length === 0) {
+        throw new Error("Categories array cannot be empty");
+      }
+
+      // Save the new expense configuration to the database
+      const configs = await Promise.all(
+        categories.map((category) => {
+          return ExpenseConfig.create(
+            {
+              userId: req.userId,
+              expenseCategoryId: category,
+            },
+            { transaction }
+          );
+        })
+      );
+
+      configs.forEach(async (config, index) => {
+        const values = config.dataValues;
+        const budget = await Budget.create({
+          expenseConfigId: values.expenseConfigId,
+          amount: amounts[index],
+        });
+        budget.save();
+      });
+
+      await transaction.commit();
+      res.status(201).json({
+        message: "Expense configuration initialized successfully",
+      });
+    } catch (error) {
+      await transaction.rollback();
+      res.status(400).json({ message: error.message });
     }
   },
 };

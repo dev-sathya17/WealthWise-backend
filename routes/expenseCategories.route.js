@@ -18,7 +18,6 @@ expenseCategoriesRouter.post(
 expenseCategoriesRouter.get(
   "/",
   auth.authenticate,
-  auth.authorize,
   expenseCategoriesController.getAllCategories
 );
 

@@ -24,7 +24,6 @@ const auth = {
 
         // setting the user id in the request object
         request.userId = decodedToken.id;
-        console.log(decodedToken.id);
 
         // calling the next middleware
         next();

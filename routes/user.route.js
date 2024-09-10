@@ -19,6 +19,9 @@ userRouter.post("/register", userController.register);
 // Route to login a user
 userRouter.post("/login", userController.login);
 
+// Route to check authentication
+userRouter.get("/check-auth", userController.checkAuthentication);
+
 // Route to logout a user
 userRouter.get("/logout", auth.authenticate, userController.logout);
 
@@ -54,6 +57,14 @@ userRouter.get(
   auth.authenticate,
   userController.totalUserIncomeExpense
 );
+
+userRouter.get(
+  "/total/category",
+  auth.authenticate,
+  userController.totalUserIncomeExpenseByCategory
+);
+
+userRouter.get("/settings", auth.authenticate, userController.getSettings);
 
 // Exporting the router
 module.exports = userRouter;

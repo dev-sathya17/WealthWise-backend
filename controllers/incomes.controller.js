@@ -7,7 +7,8 @@ const incomesController = {
   // API to add an income
   addIncome: async (req, res) => {
     try {
-      const { amount, categoryId, description } = req.body;
+      const { amount, categoryId, description, isRecurring, creditDate } =
+        req.body;
 
       const incomeConfig = await IncomeConfig.findOne({
         where: {
@@ -22,8 +23,35 @@ const incomesController = {
         amount,
         incomeConfigId,
         description,
+        isRecurring,
+        creditDate,
       });
-      res.status(201).json({ message: "Income added successfully", income });
+
+      const createdIncome = await Income.findOne({
+        where: {
+          incomeId: income.incomeId,
+        },
+        include: [
+          {
+            model: IncomeConfig,
+            attributes: ["incomeConfigId"],
+            include: [
+              {
+                model: IncomeCategory,
+                attributes: ["name", "incomeCategoryId"],
+              },
+            ],
+          },
+        ],
+      });
+
+      if (!createdIncome) {
+        return res.status(400).json({ message: "Income not found" });
+      }
+
+      res
+        .status(201)
+        .json({ message: "Income added successfully", income: createdIncome });
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
@@ -105,8 +133,8 @@ const incomesController = {
       const totalsPerMonth = await Income.findAll({
         attributes: [
           [
-            sequelize.fn("TO_CHAR", sequelize.col("creditDate"), "YYYY-MM"),
-            "month",
+            sequelize.fn("TO_CHAR", sequelize.col("creditDate"), "YYYY-MM-DD"),
+            "date",
           ],
           [sequelize.fn("SUM", sequelize.col("amount")), "totalAmount"],
         ],
@@ -120,17 +148,25 @@ const incomesController = {
           },
         ],
         group: [
-          sequelize.fn("TO_CHAR", sequelize.col("creditDate"), "YYYY-MM"),
+          sequelize.fn("TO_CHAR", sequelize.col("creditDate"), "YYYY-MM-DD"),
         ],
         order: [
           [
-            sequelize.fn("TO_CHAR", sequelize.col("creditDate"), "YYYY-MM"),
+            sequelize.fn("TO_CHAR", sequelize.col("creditDate"), "YYYY-MM-DD"),
             "ASC",
           ],
         ],
       });
 
-      res.status(200).json(totalsPerMonth);
+      const incomeData = [];
+      totalsPerMonth.forEach(({ dataValues }) => {
+        incomeData.push({
+          date: dataValues.date,
+          value: dataValues.totalAmount,
+        });
+      });
+
+      res.status(200).json(incomeData);
     } catch (error) {
       console.error("Error calculating totals per month:", error);
       res.status(500).json({ message: "Internal server error" });

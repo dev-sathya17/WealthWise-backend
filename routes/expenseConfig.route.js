@@ -20,6 +20,13 @@ expenseConfigRouter.get(
   expenseConfigController.getExpenseConfig
 );
 
+// Route to initialize expense configs
+expenseConfigRouter.post(
+  "/initialize",
+  auth.authenticate,
+  expenseConfigController.initialExpenseConfig
+);
+
 // Route to delete a category
 expenseConfigRouter.delete(
   "/:id",
