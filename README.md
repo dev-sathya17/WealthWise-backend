@@ -57,7 +57,6 @@ src/
 │
 ├── controllers/    # Controllers for handling requests
 ├── helpers/        # Helper functions and utilities
-├── socket/         # For socket communication
 ├── middlewares/    # Middleware functions for authentication and authorization
 ├── models/         # Mongoose models for database entities
 ├── routes/         # Route definitions
