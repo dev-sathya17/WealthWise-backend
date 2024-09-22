@@ -45,7 +45,6 @@ Wealthwise is a personalized finance management application that allows users to
 - **Supabase** - Backend-as-a-service providing PostgreSQL and authentication.
 - **Sequelize** - ORM for PostgreSQL.
 - **JWT** - For handling secure user authentication.
-- **Socket.io** - Used for real-time communication (if applicable).
 - **Nodemailer** - For sending email notifications.
 
 ---
